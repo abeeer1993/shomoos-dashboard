@@ -1,0 +1,1502 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام شموس | لوحة تحكم المراقبة الدائمة</title>
+    
+    <!-- Google Fonts: Cairo & Tajawal -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Chart.js for Interactive Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Cairo', 'Tajawal', 'sans-serif'],
+                    },
+                    colors: {
+                        shomoos: {
+                            blue: '#005eb8',
+                            darkBlue: '#003870',
+                            lightBlue: '#e6f0fa',
+                            crimson: '#9e1b32',
+                            lightCrimson: '#fdf2f4',
+                            bg: '#f4f6f9',
+                            border: '#e2e8f0'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #f4f6f9;
+            color: #1e293b;
+            overflow-x: hidden;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 7px;
+            height: 7px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Ticker Animation */
+        @keyframes tickerMove {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        .ticker-content {
+            display: inline-block;
+            white-space: nowrap;
+            animation: tickerMove 28s linear infinite;
+        }
+        .ticker-container:hover .ticker-content {
+            animation-play-state: paused;
+        }
+
+        /* Smooth Card Transitions */
+        .kpi-card {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .kpi-card:hover {
+            transform: translateY(-3px);
+        }
+
+        /* Print Styles */
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            body {
+                background-color: white !important;
+            }
+            .shadow-sm, .shadow-md, .shadow-lg {
+                box-shadow: none !important;
+                border: 1px solid #ddd !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Toast Notification Container (Replaces alert) -->
+    <div id="toast-container" class="fixed bottom-5 left-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Collapsible Right Navigation Sidebar (Off-canvas Drawer) -->
+    <div id="sidebar-backdrop" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-40 hidden transition-opacity"></div>
+    <aside id="sidebar-drawer" class="fixed top-0 right-0 h-full w-72 bg-shomoos-darkBlue text-white z-50 transform translate-x-full transition-transform duration-300 shadow-2xl flex flex-col">
+        <div class="p-5 border-b border-white/10 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-emerald-400 text-xl font-bold">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <div>
+                    <h2 class="font-bold text-lg tracking-wide">منصة شموس</h2>
+                    <span class="text-xs text-blue-200 tracking-widest">SHOMOOS SYSTEM</span>
+                </div>
+            </div>
+            <button onclick="toggleSidebar()" class="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-white/80 hover:text-white">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <div class="p-4 flex-1 overflow-y-auto space-y-1">
+            <p class="text-xs font-semibold text-blue-300/70 px-3 mb-2">القائمة الرئيسية</p>
+            <a href="#" onclick="showToast('تم الانتقال إلى الرئيسية', 'info'); toggleSidebar()" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-blue-100 hover:bg-white/10 transition">
+                <i class="fa-solid fa-house w-5 text-center"></i>
+                <span>الرئيسية</span>
+            </a>
+            <a href="#" onclick="toggleSidebar()" class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-shomoos-blue text-white font-semibold shadow-sm">
+                <i class="fa-solid fa-radar w-5 text-center"></i>
+                <span>المراقبة الدائمة</span>
+            </a>
+            <a href="#" onclick="showToast('قسم البلاغات الأمنية', 'info'); toggleSidebar()" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-blue-100 hover:bg-white/10 transition">
+                <i class="fa-solid fa-file-shield w-5 text-center"></i>
+                <span>إدارة البلاغات والتعاميم</span>
+            </a>
+            <a href="#" onclick="showToast('قسم مهام المتابعة الميدانية', 'info'); toggleSidebar()" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-blue-100 hover:bg-white/10 transition">
+                <i class="fa-solid fa-user-check w-5 text-center"></i>
+                <span>المهام المسندة</span>
+                <span class="mr-auto bg-shomoos-crimson text-white text-xs px-2 py-0.5 rounded-full">4</span>
+            </a>
+            <a href="#" onclick="showToast('سجل المنشآت والأنشطة التجارية', 'info'); toggleSidebar()" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-blue-100 hover:bg-white/10 transition">
+                <i class="fa-solid fa-building-shield w-5 text-center"></i>
+                <span>المنشآت والقطاعات</span>
+            </a>
+            <a href="#" onclick="showToast('التقارير الإحصائية المتقدمة', 'info'); toggleSidebar()" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-blue-100 hover:bg-white/10 transition">
+                <i class="fa-solid fa-chart-pie w-5 text-center"></i>
+                <span>التقارير والتحليلات</span>
+            </a>
+        </div>
+
+        <div class="p-4 border-t border-white/10 bg-black/10">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-shomoos-blue flex items-center justify-center font-bold text-sm">RU</div>
+                <div class="text-xs">
+                    <p class="font-bold text-white">regionuser</p>
+                    <p class="text-blue-200">مشرف منطقة الرياض</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- 1. TOP HEADER & TICKER -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs no-print">
+        <div class="max-w-[1600px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+            
+            <!-- Right Side: Sidebar Toggle & SHOMOOS Brand Logo -->
+            <div class="flex items-center gap-4">
+                <button onclick="toggleSidebar()" title="القائمة الجانبية" class="w-10 h-10 rounded-xl bg-shomoos-darkBlue hover:bg-shomoos-blue text-white flex items-center justify-center transition shadow-xs cursor-pointer">
+                    <i class="fa-solid fa-bars text-lg"></i>
+                </button>
+                
+                <!-- SHOMOOS Official-inspired SVG Logo -->
+                <div class="flex items-center gap-3 select-none">
+                    <div class="flex flex-col text-right">
+                        <span class="text-xl sm:text-2xl font-extrabold text-slate-800 leading-none tracking-tight">شموس</span>
+                        <span class="text-[10px] sm:text-xs font-bold text-slate-400 tracking-[0.22em] mt-0.5">SHOMOOS</span>
+                    </div>
+                    <!-- Geometric Brand Emblem -->
+                    <svg class="w-9 h-9 sm:w-10 sm:h-10" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="6" y="8" width="14" height="32" rx="4" fill="#005eb8"/>
+                        <rect x="24" y="4" width="16" height="22" rx="4" fill="#10b981"/>
+                        <rect x="24" y="30" width="16" height="14" rx="4" fill="#0ea5e9"/>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Left Side: User Info & Last Login -->
+            <div class="flex items-center gap-3 sm:gap-5">
+                <div class="hidden md:flex items-center gap-2 text-xs text-slate-500 bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-200/80">
+                    <i class="fa-regular fa-clock text-shomoos-blue"></i>
+                    <span>آخر دخول ناجح</span>
+                    <span class="text-slate-300">|</span>
+                    <span class="font-semibold text-slate-700" dir="ltr">13 جمادى الثانية 1448 - 14:20 م</span>
+                </div>
+
+                <!-- User Profile Dropdown Trigger -->
+                <div class="relative">
+                    <button onclick="toggleUserMenu()" class="flex items-center gap-2.5 bg-white hover:bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-full transition cursor-pointer">
+                        <div class="w-8 h-8 rounded-full bg-shomoos-lightBlue text-shomoos-blue border border-shomoos-blue/20 flex items-center justify-center">
+                            <i class="fa-regular fa-user text-sm"></i>
+                        </div>
+                        <span class="text-sm font-bold text-slate-700">regionuser</span>
+                        <i class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
+                    </button>
+
+                    <!-- User Dropdown Menu -->
+                    <div id="user-menu" class="hidden absolute left-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-100 py-2 z-40 text-sm">
+                        <div class="px-4 py-2 border-b border-slate-100 md:hidden">
+                            <p class="text-xs text-slate-400">آخر دخول ناجح</p>
+                            <p class="text-xs font-semibold text-slate-700 mt-0.5">13 جمادى الثانية 1448 - 14:20 م</p>
+                        </div>
+                        <a href="#" onclick="showToast('الملف الشخصي وصلاحيات المنطقة', 'info'); toggleUserMenu()" class="flex items-center gap-2.5 px-4 py-2 text-slate-600 hover:bg-slate-50 hover:text-shomoos-blue">
+                            <i class="fa-regular fa-id-badge w-4"></i>
+                            <span>بيانات الحساب</span>
+                        </a>
+                        <a href="#" onclick="showToast('تم تحديث البيانات بنجاح', 'success'); toggleUserMenu()" class="flex items-center gap-2.5 px-4 py-2 text-slate-600 hover:bg-slate-50 hover:text-shomoos-blue">
+                            <i class="fa-solid fa-rotate w-4"></i>
+                            <span>مزامنة السجلات</span>
+                        </a>
+                        <div class="border-t border-slate-100 my-1"></div>
+                        <a href="#" onclick="showToast('تم تسجيل الخروج الآمن', 'warning'); toggleUserMenu()" class="flex items-center gap-2.5 px-4 py-2 text-shomoos-crimson hover:bg-red-50">
+                            <i class="fa-solid fa-arrow-right-from-bracket w-4"></i>
+                            <span>تسجيل الخروج</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Announcements Ticker Bar -->
+        <div class="bg-slate-50/90 border-t border-slate-200/70 py-1.5 px-4 overflow-hidden">
+            <div class="max-w-[1600px] mx-auto flex items-center gap-3">
+                <span class="shrink-0 inline-flex items-center gap-1.5 text-[11px] font-bold bg-shomoos-lightBlue text-shomoos-blue px-2.5 py-0.5 rounded-md border border-shomoos-blue/15">
+                    <i class="fa-solid fa-bullhorn"></i>
+                    <span>التنبيهات</span>
+                </span>
+                <div class="ticker-container flex-1 overflow-hidden text-xs text-slate-500 font-medium">
+                    <div class="ticker-content">
+                        <span class="mx-12">لا يوجد إعلانات لهذا اليوم</span>
+                        <span class="text-slate-300">•</span>
+                        <span class="mx-12">لا يوجد إعلانات لهذا اليوم</span>
+                        <span class="text-slate-300">•</span>
+                        <span class="mx-12">لا يوجد إعلانات لهذا اليوم</span>
+                        <span class="text-slate-300">•</span>
+                        <span class="mx-12">حالة الربط الأمني مع قطاعات الذهب والمجوهرات: متصل ويعمل بكفاءة</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <main class="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+        <!-- Page Title & View Controls -->
+        <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-1.5 h-8 bg-shomoos-blue rounded-full"></div>
+                <div>
+                    <h1 class="text-xl sm:text-2xl font-extrabold text-slate-800">المراقبة الدائمة</h1>
+                    <p class="text-xs sm:text-sm text-slate-500">لوحة المتابعة اللحظية لحالات الاشتباه والتعاميم والبيانات غير المتطابقة</p>
+                </div>
+            </div>
+
+            <!-- View Mode Toggle & Quick Refresh -->
+            <div class="flex items-center gap-2 no-print">
+                <button onclick="toggleChartsSection()" id="toggle-charts-btn" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-2xs transition cursor-pointer">
+                    <i class="fa-solid fa-chart-column text-shomoos-blue"></i>
+                    <span>إخفاء/إظهار التحليلات</span>
+                </button>
+                <div class="bg-white border border-slate-200 p-1 rounded-xl flex items-center gap-1 shadow-2xs">
+                    <button onclick="setGridDensity('comfortable')" id="btn-grid-comf" title="عرض قياسي" class="w-8 h-8 rounded-lg bg-shomoos-blue text-white flex items-center justify-center transition cursor-pointer">
+                        <i class="fa-solid fa-table-cells-large text-xs"></i>
+                    </button>
+                    <button onclick="setGridDensity('compact')" id="btn-grid-comp" title="عرض مكثف" class="w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-100 flex items-center justify-center transition cursor-pointer">
+                        <i class="fa-solid fa-list text-xs"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. INTERACTIVE KPI CARDS SECTION (8 Categories matching image) -->
+        <section aria-label="إحصائيات المراقبة الدائمة">
+            <div id="kpi-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                <!-- Cards are dynamically rendered via JS to maintain active state cleanly -->
+            </div>
+        </section>
+
+        <!-- 3. VISUAL ANALYTICS & CHARTS SECTION -->
+        <section id="charts-section" class="grid grid-cols-1 lg:grid-cols-12 gap-5 transition-all duration-300">
+            <!-- Chart 1: Distribution by Monitoring Category -->
+            <div class="lg:col-span-5 bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-base">توزيع البلاغات وحالات المراقبة</h3>
+                        <p class="text-xs text-slate-400">مقارنة إجمالية حسب فئة الرصد (إجمالي 559 حالة)</p>
+                    </div>
+                    <span class="w-8 h-8 rounded-lg bg-shomoos-lightBlue text-shomoos-blue flex items-center justify-center text-sm">
+                        <i class="fa-solid fa-chart-bar"></i>
+                    </span>
+                </div>
+                <div class="relative flex-1 min-h-[230px]">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Chart 2: Timeline Activity (2023 - 2025) -->
+            <div class="lg:col-span-4 bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-base">النشاط الزمني للمطابقات</h3>
+                        <p class="text-xs text-slate-400">تطور عمليات الرصد والبيع المسجلة (2023 - 2025)</p>
+                    </div>
+                    <span class="w-8 h-8 rounded-lg bg-shomoos-lightCrimson text-shomoos-crimson flex items-center justify-center text-sm">
+                        <i class="fa-solid fa-chart-line"></i>
+                    </span>
+                </div>
+                <div class="relative flex-1 min-h-[230px]">
+                    <canvas id="timelineChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Chart 3: Follow-up Status Distribution -->
+            <div class="lg:col-span-3 bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-base">حالات متابعة البلاغات</h3>
+                        <p class="text-xs text-slate-400">توزيع السجلات حسب حالة الإجراء</p>
+                    </div>
+                    <span class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm">
+                        <i class="fa-solid fa-clipboard-check"></i>
+                    </span>
+                </div>
+                <div class="relative flex-1 min-h-[180px] flex items-center justify-center">
+                    <canvas id="scopeChart"></canvas>
+                </div>
+                <div class="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 text-center text-xs">
+                    <div class="bg-slate-50 p-2 rounded-xl">
+                        <span class="block text-slate-400">قيد المتابعة</span>
+                        <span class="font-extrabold text-shomoos-blue text-sm">80.8%</span>
+                    </div>
+                    <div class="bg-slate-50 p-2 rounded-xl">
+                        <span class="block text-slate-400">تم الإجراء / الضبط</span>
+                        <span class="font-extrabold text-shomoos-crimson text-sm">19.2%</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. INTERACTIVE DATA TABLE SECTION -->
+        <section class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+            
+            <!-- Table Toolbar: Search, Reset, Export & Active Category Badge -->
+            <div class="p-4 sm:p-5 border-b border-slate-100 bg-slate-50/50 flex flex-col lg:flex-row lg:items-center justify-between gap-4 no-print">
+                
+                <!-- Right: Search Input & Reset Button -->
+                <div class="flex flex-wrap items-center gap-3 flex-1">
+                    <!-- Circular Blue Search Icon Button matching image + Expandable Search Input -->
+                    <div class="relative flex-1 min-w-[240px] max-w-md">
+                        <span class="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-shomoos-blue text-white flex items-center justify-center text-xs shadow-xs pointer-events-none">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </span>
+                        <input type="text" id="searchInput" oninput="handleFilterChange()" placeholder="بحث بالاسم، المدينة، أو رقم السجل..." class="w-full bg-white border border-slate-200 focus:border-shomoos-blue focus:ring-2 focus:ring-shomoos-blue/15 rounded-full py-2 pr-11 pl-8 text-sm outline-none transition">
+                        <button id="clearSearchBtn" onclick="clearSearch()" class="hidden absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs cursor-pointer">
+                            <i class="fa-solid fa-circle-xmark"></i>
+                        </button>
+                    </div>
+
+                    <button onclick="resetAllFilters()" class="inline-flex items-center gap-1.5 bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer shadow-2xs">
+                        <i class="fa-solid fa-rotate-left text-shomoos-blue"></i>
+                        <span>إعادة تعيين</span>
+                    </button>
+                </div>
+
+                <!-- Left: Active Filter Tag & Export Actions -->
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <div id="activeCategoryPill" class="inline-flex items-center gap-2 bg-shomoos-lightBlue text-shomoos-blue px-3 py-1.5 rounded-xl text-xs font-bold border border-shomoos-blue/20">
+                        <i class="fa-solid fa-filter"></i>
+                        <span id="activeCategoryLabel">المشتبه بهم في عمليات بيع الذهب</span>
+                    </div>
+
+                    <button onclick="exportToCSV()" class="inline-flex items-center gap-1.5 bg-white hover:bg-emerald-50 text-emerald-700 border border-slate-200 hover:border-emerald-200 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer shadow-2xs">
+                        <i class="fa-solid fa-file-excel"></i>
+                        <span>تصدير CSV</span>
+                    </button>
+
+                    <button onclick="window.print()" class="inline-flex items-center gap-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer shadow-2xs">
+                        <i class="fa-solid fa-print"></i>
+                        <span>طباعة</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Responsive Table Wrapper -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-right border-collapse whitespace-nowrap">
+                    <thead>
+                        <tr class="bg-slate-50/90 border-b border-slate-200 text-slate-500 text-xs font-bold">
+                            <th class="py-3.5 px-4">الاسم</th>
+                            <th class="py-3.5 px-3 text-center">عدد عمليات البيع</th>
+                            <th class="py-3.5 px-3 text-center">التاريخ من</th>
+                            <th class="py-3.5 px-3 text-center">إلى تاريخ</th>
+                            <th class="py-3.5 px-4">المدينة</th>
+                            <th class="py-3.5 px-3 text-center">التفاصيل</th>
+                            <th class="py-3.5 px-4 text-center">أماكن الظهور</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="divide-y divide-slate-100 text-xs sm:text-sm text-slate-700">
+                        <!-- Rows populated dynamically via JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Empty State (Shown when search/filter yields 0 results) -->
+            <div id="emptyState" class="hidden py-14 px-4 text-center">
+                <div class="w-16 h-16 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3 text-2xl">
+                    <i class="fa-solid fa-folder-open"></i>
+                </div>
+                <h4 class="font-bold text-slate-700 text-base">لا توجد سجلات مطابقة لخيارات البحث</h4>
+                <p class="text-xs text-slate-400 mt-1">حاول تغيير كلمات البحث أو إعادة تعيين الفلاتر لعرض جميع السجلات</p>
+                <button onclick="resetAllFilters()" class="mt-4 px-4 py-2 bg-shomoos-blue text-white rounded-xl text-xs font-bold hover:bg-shomoos-darkBlue transition cursor-pointer">
+                    إعادة تعيين البحث
+                </button>
+            </div>
+
+            <!-- Table Footer & Pagination (Matches image layout) -->
+            <div class="p-4 bg-slate-50/70 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-600 no-print">
+                
+                <!-- Right Side: Pagination Controls & Page Size -->
+                <div class="flex flex-wrap items-center gap-4">
+                    <!-- Pagination Buttons -->
+                    <div id="paginationControls" class="flex items-center gap-1">
+                        <!-- Dynamically generated page buttons -->
+                    </div>
+
+                    <!-- Page Size Selector -->
+                    <div class="flex items-center gap-2">
+                        <select id="pageSizeSelect" onchange="handlePageSizeChange()" class="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 font-bold text-slate-700 outline-none focus:border-shomoos-blue cursor-pointer">
+                            <option value="10" selected>10</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                        </select>
+                        <span class="text-slate-500 font-medium">عدد العناصر في الصفحة</span>
+                    </div>
+                </div>
+
+                <!-- Left Side: Items Counter ("عرض العناصر من 1 إلى 10 مجموع الكلي: 26") -->
+                <div id="recordsCounter" class="font-bold text-slate-600 bg-white px-3.5 py-1.5 rounded-xl border border-slate-200/80">
+                    عرض العناصر من 1 إلى 10 مجموع الكلي: 26
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Scroll to Top Floating Button (Bottom Left matching image) -->
+    <button onclick="window.scrollTo({top: 0, behavior: 'smooth'})" title="العودة للأعلى" class="fixed bottom-5 right-5 w-11 h-11 rounded-full bg-shomoos-blue hover:bg-shomoos-darkBlue text-white shadow-lg flex items-center justify-center transition transform hover:scale-105 z-30 cursor-pointer no-print">
+        <i class="fa-solid fa-arrow-up"></i>
+    </button>
+
+    <!-- ================= MODALS ================= -->
+
+    <!-- Modal 1: Unified Record Details Page / Drawer (رئيس المهمة + متابعة الإجراء) -->
+    <div id="recordDetailsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden items-center justify-center p-3 sm:p-5">
+        <div class="bg-white rounded-2xl max-w-3xl w-full shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[92vh]">
+            <!-- Modal Header -->
+            <div class="bg-shomoos-darkBlue text-white px-6 py-4 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-blue-200">
+                        <i class="fa-solid fa-file-shield text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-base sm:text-lg leading-tight">صفحة التفاصيل وإدارة الإجراءات</h3>
+                        <p class="text-[11px] text-blue-200">تعيين رئيس المهمة وسجل متابعة الإجراءات الميدانية</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('recordDetailsModal')" class="w-8 h-8 rounded-lg hover:bg-white/10 text-white/80 hover:text-white flex items-center justify-center transition cursor-pointer">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body (Scrollable) -->
+            <div class="p-5 sm:p-6 overflow-y-auto space-y-6 flex-1 bg-slate-50/40">
+                <input type="hidden" id="detailRecordId">
+
+                <!-- 1. Suspect & Record Summary Card -->
+                <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-2xs">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                        <div class="flex items-center gap-3.5">
+                            <div class="w-12 h-12 rounded-full bg-shomoos-crimson text-white flex items-center justify-center text-xl shrink-0 shadow-xs">
+                                <i class="fa-regular fa-gem"></i>
+                            </div>
+                            <div>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <h4 id="detailSuspectName" class="font-extrabold text-slate-800 text-base sm:text-lg">-</h4>
+                                    <span id="detailStatusBadge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-shomoos-lightBlue text-shomoos-blue">-</span>
+                                </div>
+                                <p id="detailCategoryTitle" class="text-xs text-slate-500 mt-0.5">-</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 self-start sm:self-center">
+                            <span class="text-xs text-slate-400">رقم البلاغ:</span>
+                            <span id="detailRecordCode" class="font-mono font-bold text-xs bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg border border-slate-200">#SH-000</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 text-xs">
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            <span class="text-slate-400 block mb-1">عدد العمليات</span>
+                            <span id="detailSalesCount" class="font-extrabold text-shomoos-blue text-base">0</span>
+                        </div>
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            <span class="text-slate-400 block mb-1">الفترة الزمنية</span>
+                            <span id="detailDateRange" class="font-bold text-slate-700" dir="ltr">-</span>
+                        </div>
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            <span class="text-slate-400 block mb-1">المدينة</span>
+                            <span id="detailCity" class="font-bold text-slate-700 line-clamp-1">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 1: رئيس المهمة -->
+                <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs space-y-4">
+                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-8 h-8 rounded-lg bg-shomoos-lightBlue text-shomoos-blue flex items-center justify-center text-sm">
+                                <i class="fa-solid fa-user-tie"></i>
+                            </span>
+                            <div>
+                                <h5 class="font-bold text-slate-800 text-sm">1. رئيس المهمة</h5>
+                                <p class="text-[11px] text-slate-400">تعيين أو تحديث الضابط المسؤول عن متابعة الملف</p>
+                            </div>
+                        </div>
+                        <span id="leaderAssignmentBadge" class="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600">غير معين</span>
+                    </div>
+
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/70 text-xs flex items-center justify-between">
+                        <span class="text-slate-500">رئيس المهمة الحالي:</span>
+                        <span id="currentLeaderDisplay" class="font-bold text-slate-800">لم يتم التعيين بعد</span>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
+                        <div class="flex-1">
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">اختيار / تحديث رئيس المهمة</label>
+                            <select id="detailOfficerSelect" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm outline-none focus:border-shomoos-blue bg-white">
+                                <option value="">-- اختر رئيس المهمة --</option>
+                                <option value="رائد / عبدالله بن سعد العتيبي">رائد / عبدالله بن سعد العتيبي (شعبة التحريات)</option>
+                                <option value="نقيب / فهد بن محمد القحطاني">نقيب / فهد بن محمد القحطاني (فريق الرصد الميداني)</option>
+                                <option value="ملازم أول / تركي بن خالد الدوسري">ملازم أول / تركي بن خالد الدوسري (وحدة المعادن الثمينة)</option>
+                                <option value="رقيب أول / سلطان بن ناصر الشمري">رقيب أول / سلطان بن ناصر الشمري (المتابعة الأمنية)</option>
+                            </select>
+                        </div>
+                        <button type="button" onclick="saveTaskLeader()" class="px-5 py-2.5 rounded-xl bg-shomoos-darkBlue hover:bg-shomoos-blue text-white text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-2xs shrink-0">
+                            <i class="fa-solid fa-user-check"></i>
+                            <span>حفظ رئيس المهمة</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Section 2: متابعة الإجراء (Timeline + Add New Action) -->
+                <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs space-y-4">
+                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-8 h-8 rounded-lg bg-shomoos-lightCrimson text-shomoos-crimson flex items-center justify-center text-sm">
+                                <i class="fa-solid fa-clock-rotate-left"></i>
+                            </span>
+                            <div>
+                                <h5 class="font-bold text-slate-800 text-sm">2. متابعة الإجراء والسجل الزمني</h5>
+                                <p class="text-[11px] text-slate-400">تتبع الإجراءات المتخذة وتحديث حالة البلاغ</p>
+                            </div>
+                        </div>
+                        <span id="historyCountBadge" class="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">0 إجراءات</span>
+                    </div>
+
+                    <!-- Add New Follow-up Action Form -->
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/70 space-y-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">تحديث حالة المتابعة</label>
+                                <select id="newActionStatusSelect" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-shomoos-blue bg-white">
+                                    <option value="قيد المتابعة">قيد المتابعة</option>
+                                    <option value="تحت التحقق">تحت التحقق</option>
+                                    <option value="تم الاستدعاء">تم الاستدعاء</option>
+                                    <option value="تم الضبط">تم الضبط</option>
+                                    <option value="مغلق">مغلق</option>
+                                </select>
+                            </div>
+                            <div class="sm:col-span-2">
+                                <label class="block text-xs font-bold text-slate-700 mb-1">تفاصيل الإجراء الجديد</label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="newActionNoteInput" placeholder="اكتب وصف الإجراء المتخذ أو نتيجة التحري..." class="flex-1 border border-slate-200 rounded-xl px-3.5 py-2 text-xs outline-none focus:border-shomoos-blue bg-white">
+                                    <button type="button" onclick="addFollowUpAction()" class="px-4 py-2 rounded-xl bg-shomoos-blue hover:bg-shomoos-darkBlue text-white text-xs font-bold shrink-0 transition cursor-pointer flex items-center gap-1.5">
+                                        <i class="fa-solid fa-plus"></i>
+                                        <span>إضافة إجراء</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Vertical Timeline -->
+                    <div id="detailTimelineList" class="border-r-2 border-shomoos-blue/30 pr-5 mr-2 space-y-4 py-1">
+                        <!-- Dynamically populated timeline items -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="px-6 py-3.5 bg-white border-t border-slate-200/80 flex items-center justify-between shrink-0">
+                <button type="button" onclick="switchToLocationsFromDetails()" class="inline-flex items-center gap-1.5 text-xs font-bold text-shomoos-blue hover:underline cursor-pointer">
+                    <i class="fa-solid fa-location-dot"></i>
+                    <span>عرض أماكن الظهور على الخريطة</span>
+                </button>
+                <button type="button" onclick="closeModal('recordDetailsModal')" class="px-6 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition cursor-pointer">
+                    إغلاق النافذة
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 2: Appearance Locations & Record Details (أماكن الظهور وتفاصيل العمليات) -->
+    <div id="locationsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-100 overflow-hidden">
+            <div class="bg-shomoos-blue text-white px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <i class="fa-solid fa-location-dot"></i>
+                    <h3 class="font-bold text-base">سجل أماكن الظهور والعمليات المرصودة</h3>
+                </div>
+                <button onclick="closeModal('locationsModal')" class="text-white/80 hover:text-white cursor-pointer">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
+                <!-- Suspect Summary Header -->
+                <div class="flex flex-wrap items-center justify-between gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200/80">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-full bg-shomoos-crimson text-white flex items-center justify-center text-lg shadow-xs">
+                            <i class="fa-regular fa-gem"></i>
+                        </div>
+                        <div>
+                            <h4 id="locSuspectName" class="font-extrabold text-slate-800 text-base">-</h4>
+                            <p id="locCityInfo" class="text-xs text-slate-500 mt-0.5">-</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="text-center bg-white px-3.5 py-1.5 rounded-xl border border-slate-200">
+                            <span class="block text-[11px] text-slate-400">إجمالي العمليات</span>
+                            <span id="locSalesCount" class="font-extrabold text-shomoos-blue text-lg">0</span>
+                        </div>
+                        <div class="text-center bg-white px-3.5 py-1.5 rounded-xl border border-slate-200">
+                            <span class="block text-[11px] text-slate-400">الفترة الزمنية</span>
+                            <span id="locDateRange" class="font-bold text-slate-700 text-xs" dir="ltr">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Simulated Interactive Map Preview -->
+                <div class="relative h-44 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center">
+                    <!-- Stylized Vector Map Grid -->
+                    <svg class="w-full h-full opacity-40" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+                                <path d="M 32 0 L 0 0 0 32" fill="none" stroke="#94a3b8" stroke-width="0.8"/>
+                            </pattern>
+                        </defs>
+                        <rect width="100%" height="100%" fill="url(#grid)" />
+                        <path d="M 0 90 Q 180 60 360 110 T 700 80" fill="none" stroke="#005eb8" stroke-width="4" stroke-dasharray="6,4"/>
+                        <path d="M 150 0 L 220 200" fill="none" stroke="#cbd5e1" stroke-width="6"/>
+                        <path d="M 420 0 L 380 200" fill="none" stroke="#cbd5e1" stroke-width="6"/>
+                    </svg>
+                    <!-- Map Pins -->
+                    <div class="absolute inset-0 flex items-center justify-around px-10">
+                        <div class="flex flex-col items-center animate-bounce">
+                            <span class="bg-shomoos-crimson text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-sm mb-1">سوق الذهب - البطحاء</span>
+                            <i class="fa-solid fa-location-dot text-shomoos-crimson text-2xl drop-shadow"></i>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <span class="bg-shomoos-blue text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-sm mb-1">أسواق طيبة</span>
+                            <i class="fa-solid fa-location-dot text-shomoos-blue text-2xl drop-shadow"></i>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <span class="bg-slate-800 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-sm mb-1">حي العليا</span>
+                            <i class="fa-solid fa-location-dot text-slate-800 text-2xl drop-shadow"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Locations Timeline List -->
+                <div>
+                    <h5 class="font-bold text-slate-700 text-xs mb-2.5 flex items-center gap-2">
+                        <i class="fa-solid fa-list-check text-shomoos-blue"></i>
+                        <span>تفاصيل المنشآت ونقاط الظهور المسجلة في النظام:</span>
+                    </h5>
+                    <div id="locationsList" class="space-y-2">
+                        <!-- Populated via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-6 py-3.5 bg-slate-50 border-t border-slate-100 flex justify-end">
+                <button onclick="closeModal('locationsModal')" class="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold cursor-pointer">
+                    إغلاق النافذة
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= JAVASCRIPT LOGIC ================= -->
+    <script>
+        // 1. KPI Categories Data (Exact match with the reference screenshot)
+        const kpiCategories = [
+            {
+                id: 'wanted_persons',
+                title: 'مراقبة الأشخاص المطلوبين',
+                count: 116,
+                icon: 'fa-user-secret',
+                iconType: 'crimson'
+            },
+            {
+                id: 'stolen_cars',
+                title: 'مراقبة السيارات المسروقة والمطلوبة',
+                count: 39,
+                icon: 'fa-car-burst',
+                iconType: 'crimson'
+            },
+            {
+                id: 'under_surveillance',
+                title: 'الأشخاص تحت المراقبة',
+                count: 1,
+                icon: 'fa-location-crosshairs',
+                iconType: 'crimson'
+            },
+            {
+                id: 'mismatched_data',
+                title: 'البيانات الغير متطابقة',
+                count: 366,
+                icon: 'fa-calendar-xmark',
+                iconType: 'crimson'
+            },
+            {
+                id: 'gold_monitoring',
+                title: 'مراقبة بيع الذهب',
+                count: 4,
+                icon: 'fa-gem',
+                iconType: 'crimson'
+            },
+            {
+                id: 'gold_suspects',
+                title: 'المشتبه بهم في عمليات بيع الذهب',
+                count: 26,
+                icon: 'fa-gem',
+                iconType: 'blue' // Active by default as shown in the image
+            },
+            {
+                id: 'weapons_monitoring',
+                title: 'مراقبة بيع الأسلحة',
+                count: 2,
+                icon: 'fa-gun',
+                iconType: 'blue'
+            },
+            {
+                id: 'stolen_devices',
+                title: 'مراقبة الأجهزة المسروقة',
+                count: 5,
+                icon: 'fa-laptop-code',
+                iconType: 'blue'
+            }
+        ];
+
+        // 2. Full Dataset of 26 Records (Including exact rows from the screenshot + realistic completion to 26)
+        const allRecords = [
+            // First 10 exact records visible in the screenshot
+            { id: 1, category: 'gold_suspects', name: 'محمد الجوهري سيد فهيد', salesCount: 23, dateFrom: '22/01/2025', dateTo: '23/01/2025', city: 'الرياض - امارة منطقة الرياض', region: 'الرياض', matchType: 'كل المناطق', leader: '', agency: '', priority: 'عالية', status: 'قيد المتابعة', history: [{ date: '23/01/2025 - 10:15 ص', user: 'النظام الآلي', status: 'قيد المتابعة', note: 'رصد آلي لتجاوز عدد عمليات بيع الذهب المسموح بها (23 عملية).' }] },
+            { id: 2, category: 'gold_suspects', name: 'سليمان محمد سليمان الفوزاني', salesCount: 11, dateFrom: '22/01/2025', dateTo: '23/01/2025', city: 'الرياض - امارة منطقة الرياض', region: 'الرياض', matchType: 'كل المناطق', leader: '', agency: '', priority: 'عالية', status: 'قيد المتابعة', history: [{ date: '23/01/2025 - 09:40 ص', user: 'النظام الآلي', status: 'قيد المتابعة', note: 'تم إدراج السجل ضمن قائمة المشتبه بهم في بيع الذهب.' }] },
+            { id: 3, category: 'gold_suspects', name: '2سليمان 2محمد 2سليمان 2الفوزاني', salesCount: 15, dateFrom: '17/01/2024', dateTo: '18/01/2024', city: 'الرياض - امارة منطقة الرياض', region: 'الرياض', matchType: 'كل المناطق', leader: '', agency: '', priority: 'عالية', status: 'قيد المتابعة', history: [{ date: '18/01/2024 - 11:20 ص', user: 'النظام الآلي', status: 'قيد المتابعة', note: 'رصد تطابق بيانات متكرر في محلات الذهب.' }] },
+            { id: 4, category: 'gold_suspects', name: '2سليمان 2محمد 2سليمان 2الشويشلي', salesCount: 12, dateFrom: '16/01/2024', dateTo: '17/01/2024', city: 'الرياض - امارة منطقة الرياض', region: 'الرياض', matchType: 'كل المناطق', leader: '', agency: '', priority: 'متوسطة', status: 'قيد المتابعة', history: [{ date: '17/01/2024 - 02:10 م', user: 'النظام الآلي', status: 'قيد المتابعة', note: 'تسجيل 12 عملية بيع خلال 24 ساعة.' }] },
+            { id: 5, category: 'gold_suspects', name: 'شهد a شهد a', salesCount: 3, dateFrom: '15/01/2024', dateTo: '16/01/2024', city: 'الرياض - امارة منطقة الرياض', region: 'الرياض', matchType: 'كل المناطق', leader: '', agency: '', priority: 'متوسطة', status: 'تحت التحقق', history: [{ date: '16/01/2024 - 04:00 م', user: 'النظام الآلي', status: 'تحت التحقق', note: 'اشتباه في صيغة الاسم المسجل.' }] },
+            { id: 6, category: 'gold_suspects', name: 'شهد شهد شهد شهد', salesCount: 10, dateFrom: '09/01/2024', dateTo: '15/01/2024', city: 'الرياض - امارة منطقة الرياض', region: 'الرياض', matchType: 'كل المناطق', leader: '', agency: '', priority: 'عالية', status: 'قيد المتابعة', history: [{ date: '15/01/2024 - 01:30 م', user: 'النظام الآلي', status: 'قيد المتابعة', note: 'رصد 10 عمليات بيع متتالية.' }] },
+            { id: 7, category: 'gold_suspects', name: 'شهد شهد شهد شهد', salesCount: 5, dateFrom: '09/01/2024', dateTo: '15/01/2024', city: 'الرياض - امارة منطقة الرياض', region: 'الرياض', matchType: 'منطقة', leader: '', agency: '', priority: 'متوسطة', status: 'قيد المتابعة', history: [{ date: '15/01/2024 - 01:45 م', user: 'النظام الآلي', status: 'قيد المتابعة', note: 'رصد على مستوى منطقة الرياض.' }] },
+            { id: 8, category: 'gold_suspects', name: 'shahad Mohammed s Alotaibi', salesCount: 10, dateFrom: '12/11/2023', dateTo: '13/11/2023', city: 'الرياض - امارة منطقة الرياض', region: 'الرياض', matchType: 'كل المناطق', leader: '', agency: '', priority: 'عالية', status: 'قيد المتابعة', history: [{ date: '13/11/2023 - 08:15 م', user: 'النظام الآلي', status: 'قيد المتابعة', note: 'رصد عمليات بيع مرتفعة القيمة.' }] },
+            { id: 9, category: 'gold_suspects', name: 's s s ss', salesCount: 10, dateFrom: '12/11/2023', dateTo: '13/11/2023', city: 'الرياض - امارة منطقة الرياض', region: 'الرياض', matchType: 'كل المناطق', leader: '', agency: '', priority: 'عاجل جداً', status: 'تحت التحقق', history: [{ date: '13/11/2023 - 09:00 م', user: 'النظام الآلي', status: 'تحت التحقق', note: 'بيانات هوية غير مكتملة في السجل التجاري.' }] },
+            { id: 10, category: 'gold_suspects', name: '2سليمان 2محمد 2سليمان 2الشويشلي', salesCount: 6, dateFrom: '20/09/2023', dateTo: '21/09/2023', city: 'الرياض - امارة منطقة الرياض', region: 'الرياض', matchType: 'كل المناطق', leader: '', agency: '', priority: 'متوسطة', status: 'قيد المتابعة', history: [{ date: '21/09/2023 - 05:10 م', user: 'النظام الآلي', status: 'قيد المتابعة', note: 'رصد 6 عمليات بيع ذهب.' }] },
+
+            // Remaining 16 records for pagination (Total = 26)
+            { id: 11, category: 'gold_suspects', name: 'عبدالعزيز ناصر عبدالله السبيعي', salesCount: 14, dateFrom: '14/08/2024', dateTo: '18/08/2024', city: 'الرياض - امارة منطقة الرياض', region: 'الرياض', matchType: 'كل المناطق', leader: 'رائد / عبدالله بن سعد العتيبي', agency: 'البحث الجنائي', priority: 'عالية', status: 'قيد المتابعة', history: [{ date: '18/08/2024 - 10:00 ص', user: 'النظام الآلي', status: 'قيد المتابعة', note: 'تم الرصد المبدئي.' }, { date: '19/08/2024 - 11:30 ص', user: 'regionuser', status: 'قيد المتابعة', note: 'تم إسناد الملف للبحث الجنائي وتعيين رئيس المهمة.' }] },
+            { id: 12, category: 'gold_suspects', name: 'طارق صالح حمد المنصور', salesCount: 9, dateFrom: '02/07/2024', dateTo: '05/07/2024', city: 'الخرج - امارة منطقة الرياض', region: 'الرياض', matchType: 'منطقة', leader: '', agency: '', priority: 'متوسطة', status: 'قيد المتابعة', history: [] },
+            { id: 13, category: 'gold_suspects', name: 'خالد إبراهيم عبدالرحمن الدوسري', salesCount: 19, dateFrom: '11/06/2024', dateTo: '15/06/2024', city: 'الرياض - امارة منطقة الرياض', region: 'الرياض', matchType: 'كل المناطق', leader: 'نقيب / فهد بن محمد القحطاني', agency: 'إدارة التحريات والبحث', priority: 'عاجل جداً', status: 'تم الاستدعاء', history: [{ date: '16/06/2024 - 09:15 ص', user: 'regionuser', status: 'تم الاستدعاء', note: 'تم إصدار إشعار استدعاء ومراجعة فواتير الشراء.' }] },
+            { id: 14, category: 'gold_suspects', name: 'ماجد سعود فهد المطيري', salesCount: 8, dateFrom: '20/05/2024', dateTo: '22/05/2024', city: 'جدة - امارة منطقة مكة المكرمة', region: 'مكة المكرمة', matchType: 'كل المناطق', leader: '', agency: '', priority: 'متوسطة', status: 'قيد المتابعة', history: [] },
+            { id: 15, category: 'gold_suspects', name: 'فيصل تركي محمد الحربي', salesCount: 17, dateFrom: '04/04/2024', dateTo: '07/04/2024', city: 'الرياض - امارة منطقة الرياض', region: 'الرياض', matchType: 'كل المناطق', leader: '', agency: '', priority: 'عالية', status: 'قيد المتابعة', history: [] },
+            { id: 16, category: 'gold_suspects', name: 'بندر عبدالرحمن سعد الزهراني', salesCount: 7, dateFrom: '19/03/2024', dateTo: '21/03/2024', city: 'الدمام - امارة المنطقة الشرقية', region: 'المنطقة الشرقية', matchType: 'كل المناطق', leader: '', agency: '', priority: 'متوسطة', status: 'قيد المتابعة', history: [] },
+            { id: 17, category: 'gold_suspects', name: 'نواف حمدان سالم الرشيدي', salesCount: 13, dateFrom: '10/02/2024', dateTo: '12/02/2024', city: 'الرياض - امارة منطقة الرياض', region: 'الرياض', matchType: 'كل المناطق', leader: '', agency: '', priority: 'عالية', status: 'قيد المتابعة', history: [] },
+            { id: 18, category: 'gold_suspects', name: 'ياسر علي حسن الغامدي', salesCount: 11, dateFrom: '25/12/2023', dateTo: '28/12/2023', city: 'مكة المكرمة - امارة منطقة مكة المكرمة', region: 'مكة المكرمة', matchType: 'منطقة', leader: '', agency: '', priority: 'متوسطة', status: 'قيد المتابعة', history: [] },
+            { id: 19, category: 'gold_suspects', name: 'عمر سليمان عبدالعزيز الراجحي', salesCount: 21, dateFrom: '05/12/2023', dateTo: '08/12/2023', city: 'الرياض - امارة منطقة الرياض', region: 'الرياض', matchType: 'كل المناطق', leader: 'ملازم أول / تركي بن خالد الدوسري', agency: 'وحدة الرقابة على المعادن الثمينة', priority: 'عاجل جداً', status: 'تم الضبط', history: [{ date: '10/12/2023 - 01:00 م', user: 'regionuser', status: 'تم الضبط', note: 'تم ضبط الكميات ومطابقة السجلات.' }] },
+            { id: 20, category: 'gold_suspects', name: 'سامي عبدالله محمد الشهري', salesCount: 6, dateFrom: '18/10/2023', dateTo: '19/10/2023', city: 'الرياض - امارة منطقة الرياض', region: 'الرياض', matchType: 'كل المناطق', leader: '', agency: '', priority: 'متوسطة', status: 'قيد المتابعة', history: [] },
+            { id: 21, category: 'gold_suspects', name: 'وليد خالد ناصر البقمي', salesCount: 9, dateFrom: '02/10/2023', dateTo: '04/10/2023', city: 'الرياض - امارة منطقة الرياض', region: 'الرياض', matchType: 'كل المناطق', leader: '', agency: '', priority: 'متوسطة', status: 'قيد المتابعة', history: [] },
+            { id: 22, category: 'gold_suspects', name: 'مشعل فهد عبدالرحمن العتيبي', salesCount: 16, dateFrom: '12/08/2023', dateTo: '15/08/2023', city: 'الرياض - امارة منطقة الرياض', region: 'الرياض', matchType: 'كل المناطق', leader: '', agency: '', priority: 'عالية', status: 'قيد المتابعة', history: [] },
+            { id: 23, category: 'gold_suspects', name: 'راشد محمد راشد التميمي', salesCount: 4, dateFrom: '28/07/2023', dateTo: '29/07/2023', city: 'الخبر - امارة المنطقة الشرقية', region: 'المنطقة الشرقية', matchType: 'منطقة', leader: '', agency: '', priority: 'متوسطة', status: 'مغلق', history: [{ date: '01/08/2023 - 10:20 ص', user: 'regionuser', status: 'مغلق', note: 'تم التحقق من نظامية الفواتير وإغلاق البلاغ.' }] },
+            { id: 24, category: 'gold_suspects', name: 'هشام صالح عبدالله العمري', salesCount: 12, dateFrom: '14/06/2023', dateTo: '16/06/2023', city: 'الرياض - امارة منطقة الرياض', region: 'الرياض', matchType: 'كل المناطق', leader: '', agency: '', priority: 'عالية', status: 'قيد المتابعة', history: [] },
+            { id: 25, category: 'gold_suspects', name: 'زياد طارق عبدالرحمن السديري', salesCount: 8, dateFrom: '03/05/2023', dateTo: '05/05/2023', city: 'الرياض - امارة منطقة الرياض', region: 'الرياض', matchType: 'كل المناطق', leader: '', agency: '', priority: 'متوسطة', status: 'قيد المتابعة', history: [] },
+            { id: 26, category: 'gold_suspects', name: 'أحمد منصور إبراهيم الخالدي', salesCount: 15, dateFrom: '19/03/2023', dateTo: '21/03/2023', city: 'الرياض - امارة منطقة الرياض', region: 'الرياض', matchType: 'كل المناطق', leader: '', agency: '', priority: 'عالية', status: 'قيد المتابعة', history: [] }
+        ];
+
+        // Store dynamic category mock records in memory so edits persist during the session
+        const dynamicCategoryStore = {};
+
+        // Application State
+        let state = {
+            activeCategory: 'gold_suspects',
+            searchQuery: '',
+            currentPage: 1,
+            pageSize: 10,
+            density: 'comfortable'
+        };
+
+        // Initialize Dashboard on Load
+        document.addEventListener('DOMContentLoaded', () => {
+            renderKPICards();
+            renderTable();
+            initCharts();
+        });
+
+        // 3. Render KPI Cards
+        function renderKPICards() {
+            const container = document.getElementById('kpi-grid');
+            container.innerHTML = kpiCategories.map(cat => {
+                const isActive = state.activeCategory === cat.id;
+                
+                // Active card gets Royal Blue (#005eb8) background & white text
+                if (isActive) {
+                    return `
+                        <button onclick="selectCategory('${cat.id}')" class="kpi-card text-right bg-shomoos-blue text-white rounded-2xl p-5 shadow-md shadow-shomoos-blue/25 border border-shomoos-blue flex items-center justify-between gap-4 cursor-pointer relative overflow-hidden">
+                            <div class="absolute -left-4 -bottom-4 w-24 h-24 rounded-full bg-white/5 pointer-events-none"></div>
+                            <div class="w-12 h-12 rounded-full bg-white/15 border border-white/25 flex items-center justify-center shrink-0 text-xl">
+                                <i class="fa-solid ${cat.icon}"></i>
+                            </div>
+                            <div class="flex-1 text-center">
+                                <span class="block text-3xl sm:text-4xl font-extrabold tracking-tight leading-none">${cat.count}</span>
+                                <span class="block text-xs sm:text-sm font-bold text-blue-100 mt-2 leading-snug">${cat.title}</span>
+                            </div>
+                        </button>
+                    `;
+                }
+
+                // Inactive Card (Clean White Surface with Crimson or Royal Blue circular icon)
+                const iconBg = cat.iconType === 'crimson' ? 'bg-shomoos-crimson text-white' : 'bg-shomoos-blue text-white';
+                return `
+                    <button onclick="selectCategory('${cat.id}')" class="kpi-card text-right bg-white hover:bg-slate-50/80 text-slate-800 rounded-2xl p-5 shadow-xs hover:shadow-md border border-slate-200/80 flex items-center justify-between gap-4 cursor-pointer">
+                        <div class="w-12 h-12 rounded-full ${iconBg} flex items-center justify-center shrink-0 text-lg shadow-xs">
+                            <i class="fa-solid ${cat.icon}"></i>
+                        </div>
+                        <div class="flex-1 text-center">
+                            <span class="block text-3xl sm:text-4xl font-extrabold text-shomoos-darkBlue tracking-tight leading-none">${cat.count}</span>
+                            <span class="block text-xs font-bold text-slate-500 mt-2 leading-snug">${cat.title}</span>
+                        </div>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        // Handle KPI Card Selection
+        function selectCategory(categoryId) {
+            state.activeCategory = categoryId;
+            state.currentPage = 1;
+            
+            const selectedCat = kpiCategories.find(c => c.id === categoryId);
+            document.getElementById('activeCategoryLabel').textContent = selectedCat.title;
+            
+            renderKPICards();
+            renderTable();
+            showToast(`تم تصفية العرض حسب: ${selectedCat.title}`, 'info');
+        }
+
+        // Get Filtered Records
+        function getFilteredRecords() {
+            let sourceData = [];
+            if (state.activeCategory === 'gold_suspects') {
+                sourceData = allRecords;
+            } else {
+                if (!dynamicCategoryStore[state.activeCategory]) {
+                    const catObj = kpiCategories.find(c => c.id === state.activeCategory);
+                    const sampleCount = Math.min(catObj.count, 15);
+                    dynamicCategoryStore[state.activeCategory] = Array.from({ length: sampleCount }, (_, idx) => ({
+                        id: 1000 + (kpiCategories.indexOf(catObj) * 100) + idx,
+                        category: state.activeCategory,
+                        name: `سجل رصد (${catObj.title}) #${idx + 1}`,
+                        salesCount: (idx % 5) + 1,
+                        dateFrom: '10/01/2025',
+                        dateTo: '23/01/2025',
+                        city: idx % 3 === 0 ? 'جدة - امارة منطقة مكة المكرمة' : 'الرياض - امارة منطقة الرياض',
+                        region: idx % 3 === 0 ? 'مكة المكرمة' : 'الرياض',
+                        matchType: idx % 4 === 0 ? 'منطقة' : 'كل المناطق',
+                        leader: idx % 2 === 0 ? 'رائد / عبدالله بن سعد العتيبي' : '',
+                        agency: idx % 2 === 0 ? 'البحث الجنائي' : '',
+                        priority: 'عالية',
+                        status: idx % 2 === 0 ? 'قيد المتابعة' : 'تحت التحقق',
+                        history: [{ date: '23/01/2025 - 08:30 ص', user: 'النظام الآلي', status: 'قيد المتابعة', note: `تم رصد الحالة ضمن فئة ${catObj.title}.` }]
+                    }));
+                }
+                sourceData = dynamicCategoryStore[state.activeCategory];
+            }
+
+            return sourceData.filter(item => {
+                const matchesSearch = item.name.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
+                                      item.city.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
+                                      String(item.id).includes(state.searchQuery.trim());
+                return matchesSearch;
+            });
+        }
+
+        // Helper to find any record by ID across all stores
+        function findRecordById(id) {
+            let rec = allRecords.find(r => r.id === id);
+            if (rec) return rec;
+            for (const key in dynamicCategoryStore) {
+                rec = dynamicCategoryStore[key].find(r => r.id === id);
+                if (rec) return rec;
+            }
+            return null;
+        }
+
+        // 4. Render Table & Pagination
+        function renderTable() {
+            const filtered = getFilteredRecords();
+            const totalItems = filtered.length;
+            const totalPages = Math.max(1, Math.ceil(totalItems / state.pageSize));
+            
+            if (state.currentPage > totalPages) state.currentPage = totalPages;
+
+            const startIdx = (state.currentPage - 1) * state.pageSize;
+            const endIdx = Math.min(startIdx + state.pageSize, totalItems);
+            const paginatedItems = filtered.slice(startIdx, endIdx);
+
+            const tbody = document.getElementById('tableBody');
+            const emptyState = document.getElementById('emptyState');
+
+            if (totalItems === 0) {
+                tbody.innerHTML = '';
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                const rowPadding = state.density === 'compact' ? 'py-2' : 'py-3.5';
+
+                tbody.innerHTML = paginatedItems.map(row => {
+                    // Indicator dot on Details button if task has already been assigned or updated
+                    const hasProgress = Boolean(row.leader || row.status === 'تم الضبط' || row.status === 'مغلق');
+
+                    return `
+                        <tr class="hover:bg-blue-50/40 transition group">
+                            <!-- Name with Crimson Diamond Badge (Rightmost column) -->
+                            <td class="${rowPadding} px-4 font-bold text-slate-800">
+                                <div class="flex items-center gap-3">
+                                    <span class="w-7 h-7 rounded-full bg-shomoos-crimson text-white flex items-center justify-center shrink-0 text-xs shadow-2xs">
+                                        <i class="fa-regular fa-gem"></i>
+                                    </span>
+                                    <span class="group-hover:text-shomoos-blue transition">${row.name}</span>
+                                </div>
+                            </td>
+
+                            <!-- Sales Count -->
+                            <td class="${rowPadding} px-3 text-center">
+                                <span class="inline-block min-w-[28px] font-extrabold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md">${row.salesCount}</span>
+                            </td>
+
+                            <!-- Date From -->
+                            <td class="${rowPadding} px-3 text-center text-slate-600 font-medium" dir="ltr">${row.dateFrom}</td>
+
+                            <!-- Date To -->
+                            <td class="${rowPadding} px-3 text-center text-slate-600 font-medium" dir="ltr">${row.dateTo}</td>
+
+                            <!-- City with Blue Map Pin -->
+                            <td class="${rowPadding} px-4 text-slate-600">
+                                <div class="flex items-center gap-1.5">
+                                    <i class="fa-solid fa-location-dot text-shomoos-blue text-xs"></i>
+                                    <span>${row.city}</span>
+                                </div>
+                            </td>
+
+                            <!-- Unified Details Column (Icon Button opening Details Modal) -->
+                            <td class="${rowPadding} px-3 text-center">
+                                <button onclick="openDetailsModal(${row.id})" title="التفاصيل (رئيس المهمة ومتابعة الإجراء)" class="relative w-9 h-9 rounded-xl bg-shomoos-lightBlue hover:bg-shomoos-blue text-shomoos-blue hover:text-white inline-flex items-center justify-center transition shadow-2xs cursor-pointer">
+                                    <i class="fa-solid fa-file-lines text-sm"></i>
+                                    ${hasProgress ? '<span class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white"></span>' : ''}
+                                </button>
+                            </td>
+
+                            <!-- Appearance Locations Pin Icon (Leftmost column) -->
+                            <td class="${rowPadding} px-4 text-center">
+                                <button onclick="openLocationsModal(${row.id})" title="عرض أماكن الظهور" class="w-8 h-8 rounded-full hover:bg-shomoos-lightBlue text-shomoos-blue inline-flex items-center justify-center transition cursor-pointer">
+                                    <i class="fa-solid fa-location-dot text-base"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            // Update Counter Text
+            const displayStart = totalItems === 0 ? 0 : startIdx + 1;
+            document.getElementById('recordsCounter').textContent = 
+                `عرض العناصر من ${displayStart} إلى ${endIdx} مجموع الكلي: ${totalItems}`;
+
+            renderPagination(totalPages);
+        }
+
+        // Render Pagination Buttons
+        function renderPagination(totalPages) {
+            const container = document.getElementById('paginationControls');
+            let html = '';
+
+            // First & Prev Buttons (RTL aware)
+            html += `
+                <button onclick="goToPage(1)" ${state.currentPage === 1 ? 'disabled' : ''} class="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 flex items-center justify-center cursor-pointer" title="الصفحة الأولى">
+                    <i class="fa-solid fa-angles-right text-[10px]"></i>
+                </button>
+                <button onclick="goToPage(${state.currentPage - 1})" ${state.currentPage === 1 ? 'disabled' : ''} class="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 flex items-center justify-center cursor-pointer" title="السابق">
+                    <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                </button>
+            `;
+
+            // Page Numbers
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === state.currentPage) {
+                    html += `<button class="w-8 h-8 rounded-full bg-shomoos-blue text-white font-bold shadow-xs">${i}</button>`;
+                } else {
+                    html += `<button onclick="goToPage(${i})" class="w-8 h-8 rounded-full hover:bg-slate-200/70 text-slate-600 font-semibold transition cursor-pointer">${i}</button>`;
+                }
+            }
+
+            // Next & Last Buttons
+            html += `
+                <button onclick="goToPage(${state.currentPage + 1})" ${state.currentPage === totalPages ? 'disabled' : ''} class="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 flex items-center justify-center cursor-pointer" title="التالي">
+                    <i class="fa-solid fa-chevron-left text-[10px]"></i>
+                </button>
+                <button onclick="goToPage(${totalPages})" ${state.currentPage === totalPages ? 'disabled' : ''} class="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 flex items-center justify-center cursor-pointer" title="الأخيرة">
+                    <i class="fa-solid fa-angles-left text-[10px]"></i>
+                </button>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        function goToPage(page) {
+            state.currentPage = page;
+            renderTable();
+        }
+
+        function handleFilterChange() {
+            const searchVal = document.getElementById('searchInput').value;
+            state.searchQuery = searchVal;
+            state.currentPage = 1;
+
+            document.getElementById('clearSearchBtn').classList.toggle('hidden', searchVal.length === 0);
+            renderTable();
+        }
+
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            handleFilterChange();
+        }
+
+        function resetAllFilters() {
+            document.getElementById('searchInput').value = '';
+            state.activeCategory = 'gold_suspects';
+            document.getElementById('activeCategoryLabel').textContent = 'المشتبه بهم في عمليات بيع الذهب';
+            renderKPICards();
+            handleFilterChange();
+        }
+
+        function handlePageSizeChange() {
+            state.pageSize = parseInt(document.getElementById('pageSizeSelect').value, 10);
+            state.currentPage = 1;
+            renderTable();
+        }
+
+        function setGridDensity(mode) {
+            state.density = mode;
+            const comfBtn = document.getElementById('btn-grid-comf');
+            const compBtn = document.getElementById('btn-grid-comp');
+            
+            if (mode === 'comfortable') {
+                comfBtn.className = 'w-8 h-8 rounded-lg bg-shomoos-blue text-white flex items-center justify-center transition cursor-pointer';
+                compBtn.className = 'w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-100 flex items-center justify-center transition cursor-pointer';
+            } else {
+                compBtn.className = 'w-8 h-8 rounded-lg bg-shomoos-blue text-white flex items-center justify-center transition cursor-pointer';
+                comfBtn.className = 'w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-100 flex items-center justify-center transition cursor-pointer';
+            }
+            renderTable();
+        }
+
+        // 5. Charts Initialization (Chart.js)
+        function initCharts() {
+            Chart.defaults.font.family = 'Cairo, sans-serif';
+            Chart.defaults.color = '#64748b';
+
+            // Chart 1: Category Distribution Bar Chart
+            const ctxCat = document.getElementById('categoryChart').getContext('2d');
+            new Chart(ctxCat, {
+                type: 'bar',
+                data: {
+                    labels: ['بيانات غير متطابقة', 'المطلوبين', 'السيارات المسروقة', 'مشتبهي الذهب', 'أجهزة مسروقة', 'بيع الذهب', 'بيع الأسلحة', 'تحت المراقبة'],
+                    datasets: [{
+                        label: 'عدد الحالات',
+                        data: [366, 116, 39, 26, 5, 4, 2, 1],
+                        backgroundColor: [
+                            '#9e1b32',
+                            '#005eb8',
+                            '#0284c7',
+                            '#10b981',
+                            '#6366f1',
+                            '#f59e0b',
+                            '#ef4444',
+                            '#64748b'
+                        ],
+                        borderRadius: 6,
+                        barThickness: 18
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#f1f5f9' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { font: { size: 10, weight: 'bold' } }
+                        }
+                    }
+                }
+            });
+
+            // Chart 2: Timeline Line Chart (2023 - 2025)
+            const ctxTime = document.getElementById('timelineChart').getContext('2d');
+            new Chart(ctxTime, {
+                type: 'line',
+                data: {
+                    labels: ['الربع 2 / 2023', 'الربع 4 / 2023', 'الربع 1 / 2024', 'الربع 3 / 2024', 'الربع 1 / 2025'],
+                    datasets: [{
+                        label: 'عمليات البيع المرصودة',
+                        data: [22, 34, 48, 39, 56],
+                        borderColor: '#005eb8',
+                        backgroundColor: 'rgba(0, 94, 184, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#9e1b32',
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#f1f5f9' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { font: { size: 10 } }
+                        }
+                    }
+                }
+            });
+
+            // Chart 3: Follow-up Status Doughnut Chart
+            const ctxScope = document.getElementById('scopeChart').getContext('2d');
+            new Chart(ctxScope, {
+                type: 'doughnut',
+                data: {
+                    labels: ['قيد المتابعة', 'تم الإجراء / الضبط'],
+                    datasets: [{
+                        data: [21, 5],
+                        backgroundColor: ['#005eb8', '#9e1b32'],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        function toggleChartsSection() {
+            const section = document.getElementById('charts-section');
+            section.classList.toggle('hidden');
+        }
+
+        // 6. Unified Details Modal & Interactive Handlers
+        function openDetailsModal(recordId) {
+            const record = findRecordById(recordId);
+            if (!record) return;
+
+            const catObj = kpiCategories.find(c => c.id === record.category);
+
+            // Populate Summary Header
+            document.getElementById('detailRecordId').value = record.id;
+            document.getElementById('detailRecordCode').textContent = `#SH-${String(record.id).padStart(4, '0')}`;
+            document.getElementById('detailSuspectName').textContent = record.name;
+            document.getElementById('detailCategoryTitle').textContent = catObj ? catObj.title : 'المراقبة الدائمة';
+            document.getElementById('detailSalesCount').textContent = record.salesCount;
+            document.getElementById('detailDateRange').textContent = `${record.dateFrom} ← ${record.dateTo}`;
+            document.getElementById('detailCity').textContent = record.city;
+
+            updateStatusBadgeUI(record.status);
+
+            // Populate Section 1: رئيس المهمة
+            updateLeaderBadgeUI(record.leader);
+            document.getElementById('currentLeaderDisplay').textContent = record.leader || 'لم يتم التعيين بعد';
+            document.getElementById('detailOfficerSelect').value = record.leader || '';
+
+            // Populate Section 2: متابعة الإجراء
+            document.getElementById('newActionStatusSelect').value = record.status || 'قيد المتابعة';
+            document.getElementById('newActionNoteInput').value = '';
+            renderDetailTimeline(record);
+
+            const modal = document.getElementById('recordDetailsModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function updateLeaderBadgeUI(leader) {
+            const badge = document.getElementById('leaderAssignmentBadge');
+            if (leader) {
+                badge.textContent = 'تم التعيين';
+                badge.className = 'text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200';
+            } else {
+                badge.textContent = 'غير معين';
+                badge.className = 'text-[11px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600';
+            }
+        }
+
+        function updateStatusBadgeUI(status) {
+            const badge = document.getElementById('detailStatusBadge');
+            badge.textContent = status;
+            if (status === 'تم الضبط') {
+                badge.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800';
+            } else if (status === 'مغلق') {
+                badge.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-200 text-slate-700';
+            } else if (status === 'تم الاستدعاء' || status === 'تحت التحقق') {
+                badge.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800';
+            } else {
+                badge.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold bg-shomoos-lightBlue text-shomoos-blue';
+            }
+        }
+
+        function getCurrentTimestamp() {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('en-GB');
+            const timeStr = now.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+            return `${dateStr} - ${timeStr}`;
+        }
+
+        // Save Section 1: رئيس المهمة
+        function saveTaskLeader() {
+            const id = parseInt(document.getElementById('detailRecordId').value, 10);
+            const officer = document.getElementById('detailOfficerSelect').value;
+            if (!officer) {
+                showToast('الرجاء اختيار رئيس المهمة من القائمة أولاً', 'warning');
+                return;
+            }
+
+            const record = findRecordById(id);
+            if (record) {
+                record.leader = officer;
+                if (!record.history) record.history = [];
+                record.history.unshift({
+                    date: getCurrentTimestamp(),
+                    user: 'regionuser',
+                    status: record.status,
+                    note: `تم تعيين / تحديث رئيس المهمة: ${officer}`
+                });
+
+                updateLeaderBadgeUI(officer);
+                document.getElementById('currentLeaderDisplay').textContent = officer;
+                renderDetailTimeline(record);
+                renderTable();
+                showToast('تم حفظ رئيس المهمة بنجاح', 'success');
+            }
+        }
+
+        // Save Section 2: إضافة إجراء جديد لمتابعة البلاغ
+        function addFollowUpAction() {
+            const id = parseInt(document.getElementById('detailRecordId').value, 10);
+            const newStatus = document.getElementById('newActionStatusSelect').value;
+            const actionNote = document.getElementById('newActionNoteInput').value.trim();
+
+            if (!actionNote) {
+                showToast('يرجى كتابة تفاصيل الإجراء المتخذ قبل الحفظ', 'warning');
+                return;
+            }
+
+            const record = findRecordById(id);
+            if (record) {
+                record.status = newStatus;
+                if (!record.history) record.history = [];
+                record.history.unshift({
+                    date: getCurrentTimestamp(),
+                    user: 'regionuser',
+                    status: newStatus,
+                    note: actionNote
+                });
+
+                document.getElementById('newActionNoteInput').value = '';
+                updateStatusBadgeUI(newStatus);
+                renderDetailTimeline(record);
+                renderTable();
+                showToast('تم تسجيل الإجراء وتحديث حالة المتابعة', 'success');
+            }
+        }
+
+        function renderDetailTimeline(record) {
+            const list = document.getElementById('detailTimelineList');
+            const items = record.history && record.history.length > 0
+                ? record.history
+                : [{ date: record.dateTo, user: 'النظام الآلي', status: record.status, note: 'تم تسجيل البلاغ في نظام المراقبة الدائمة.' }];
+
+            document.getElementById('historyCountBadge').textContent = `${items.length} إجراءات`;
+
+            list.innerHTML = items.map((item, idx) => `
+                <div class="relative">
+                    <span class="w-3 h-3 rounded-full ${idx === 0 ? 'bg-shomoos-blue ring-4 ring-shomoos-lightBlue' : 'bg-slate-300'} absolute -right-[27px] top-1"></span>
+                    <div class="bg-slate-50/90 hover:bg-slate-50 p-3 rounded-xl border border-slate-200/70 transition">
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
+                            <span class="text-xs font-bold text-slate-800">${item.note}</span>
+                            <span class="text-[11px] font-bold px-2 py-0.5 rounded-md bg-white border border-slate-200 text-shomoos-blue">${item.status}</span>
+                        </div>
+                        <div class="flex items-center gap-3 text-[11px] text-slate-400">
+                            <span><i class="fa-regular fa-user ml-1"></i>${item.user}</span>
+                            <span>•</span>
+                            <span dir="ltr"><i class="fa-regular fa-clock ml-1"></i>${item.date}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function switchToLocationsFromDetails() {
+            const id = parseInt(document.getElementById('detailRecordId').value, 10);
+            closeModal('recordDetailsModal');
+            openLocationsModal(id);
+        }
+
+        function openLocationsModal(recordId) {
+            const record = findRecordById(recordId);
+            if (!record) return;
+
+            document.getElementById('locSuspectName').textContent = record.name;
+            document.getElementById('locCityInfo').textContent = `${record.city}`;
+            document.getElementById('locSalesCount').textContent = record.salesCount;
+            document.getElementById('locDateRange').textContent = `${record.dateFrom} ← ${record.dateTo}`;
+
+            // Generate realistic gold shops locations list
+            const shops = [
+                { shop: 'مجوهرات قمة الذهب - فرع البطحاء', date: record.dateTo, weight: '145.5 جرام (عيار 21)', amount: '41,200 ر.س' },
+                { shop: 'معرض لؤلؤة الشرق للمجوهرات - أسواق طيبة', date: record.dateFrom, weight: '98.0 جرام (عيار 21)', amount: '27,850 ر.س' },
+                { shop: 'مؤسسة الرمال الذهبية للتجارة - حي العليا', date: record.dateFrom, weight: '62.3 جرام (عيار 18)', amount: '15,400 ر.س' }
+            ];
+
+            document.getElementById('locationsList').innerHTML = shops.map((s, i) => `
+                <div class="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl bg-slate-50 border border-slate-200/70 text-xs">
+                    <div class="flex items-center gap-2.5">
+                        <span class="w-6 h-6 rounded-full bg-shomoos-blue text-white flex items-center justify-center font-bold">${i + 1}</span>
+                        <div>
+                            <p class="font-bold text-slate-800">${s.shop}</p>
+                            <span class="text-slate-400">الوزن: ${s.weight}</span>
+                        </div>
+                    </div>
+                    <div class="text-left">
+                        <span class="block font-extrabold text-shomoos-crimson">${s.amount}</span>
+                        <span class="text-slate-400" dir="ltr">${s.date}</span>
+                    </div>
+                </div>
+            `).join('');
+
+            const modal = document.getElementById('locationsModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function openFollowUpModal(id, name, status) {
+            document.getElementById('followSuspectName').textContent = name;
+            document.getElementById('followCurrentStatus').textContent = `الحالة الحالية: ${status}`;
+            const modal = document.getElementById('followUpModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        // Sidebar & User Menu Toggles
+        function toggleSidebar() {
+            const drawer = document.getElementById('sidebar-drawer');
+            const backdrop = document.getElementById('sidebar-backdrop');
+            const isClosed = drawer.classList.contains('translate-x-full');
+
+            if (isClosed) {
+                drawer.classList.remove('translate-x-full');
+                backdrop.classList.remove('hidden');
+            } else {
+                drawer.classList.add('translate-x-full');
+                backdrop.classList.add('hidden');
+            }
+        }
+
+        function toggleUserMenu() {
+            document.getElementById('user-menu').classList.toggle('hidden');
+        }
+
+        // Export to CSV Function
+        function exportToCSV() {
+            const records = getFilteredRecords();
+            if (records.length === 0) {
+                showToast('لا توجد بيانات لتصديرها', 'warning');
+                return;
+            }
+
+            const headers = ['الاسم', 'عدد عمليات البيع', 'التاريخ من', 'إلى تاريخ', 'المدينة', 'رئيس المهمة', 'حالة المتابعة'];
+            const csvRows = [
+                headers.join(','),
+                ...records.map(r => [
+                    `"${r.name}"`,
+                    r.salesCount,
+                    `"${r.dateFrom}"`,
+                    `"${r.dateTo}"`,
+                    `"${r.city}"`,
+                    `"${r.leader || 'غير معين'}"`,
+                    `"${r.status}"`
+                ].join(','))
+            ];
+
+            // Add UTF-8 BOM so Excel displays Arabic characters properly
+            const csvString = '\uFEFF' + csvRows.join('\n');
+            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `shomoos_monitoring_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showToast('تم تصدير ملف البيانات (CSV) بنجاح', 'success');
+        }
+
+        // Custom Toast Notification System
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const colors = {
+                success: 'bg-emerald-600 text-white',
+                info: 'bg-shomoos-darkBlue text-white',
+                warning: 'bg-amber-600 text-white'
+            };
+            const icons = {
+                success: 'fa-circle-check',
+                info: 'fa-circle-info',
+                warning: 'fa-triangle-exclamation'
+            };
+
+            toast.className = `${colors[type]} px-4 py-3 rounded-xl shadow-lg flex items-center gap-2.5 text-xs font-bold pointer-events-auto transform transition-all duration-300 translate-y-2 opacity-0`;
+            toast.innerHTML = `<i class="fa-solid ${icons[type]} text-sm"></i><span>${message}</span>`;
+            
+            container.appendChild(toast);
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
